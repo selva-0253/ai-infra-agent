@@ -130,7 +130,7 @@ func callAI(ctx context.Context, cfg aws.Config) ([]byte, error) {
     // Example: "anthropic.claude-3-sonnet-20240229-v1:0"
     // Run 'aws bedrock list-foundation-models' in your terminal to see what is available.
     output, err := client.InvokeModel(ctx, &bedrockruntime.InvokeModelInput{
-        ModelId:     aws.String("anthropic.claude-3-sonnet-20240229-v1:0"), 
+        ModelId:     aws.String("arn:aws:bedrock:ap-southeast-1:731493185648:inference-profile/global.anthropic.claude-sonnet-4-6"), 
         ContentType: aws.String("application/json"),
         Body:        body,
     })
