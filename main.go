@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
 )
 
 // --- Structures ---
@@ -61,7 +62,21 @@ func runInfrastructureAgent(ctx context.Context, cfg aws.Config) error {
     }
     return nil
 }
-
+func getLatestAMI(ctx context.Context, cfg aws.Config) (string, error) {
+    client := ssm.NewFromConfig(cfg)
+    
+    // This is the public path provided by AWS for AL2023
+    parameterPath := "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
+    
+    output, err := client.GetParameter(ctx, &ssm.GetParameterInput{
+        Name: aws.String(parameterPath),
+    })
+    if err != nil {
+        return "", err
+    }
+    
+    return *output.Parameter.Value, nil
+}
 // --- Lambda Handler ---
 func HandleRequest(ctx context.Context) (string, error) {
 	cfg, err := config.LoadDefaultConfig(ctx)
@@ -98,19 +113,27 @@ func main() {
 
 // --- Helper Functions (Keep these as they were) ---
 func createEC2(ctx context.Context, cfg aws.Config, req InfraRequest) error {
-	client := ec2.NewFromConfig(cfg)
-	input := &ec2.RunInstancesInput{
-		ImageId:      aws.String("ami-053b0d53c279acc90"),
-		InstanceType: types.InstanceType(req.InstanceType),
-		MinCount:     aws.Int32(req.Count),
-		MaxCount:     aws.Int32(req.Count),
-	}
-	result, err := client.RunInstances(ctx, input)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("Success! Instance ID: %s\n", *result.Instances[0].InstanceId)
-	return nil
+    // Dynamically fetch the AMI
+    amiID, err := getLatestAMI(ctx, cfg)
+    if err != nil {
+        return fmt.Errorf("failed to fetch latest AMI: %w", err)
+    }
+
+    client := ec2.NewFromConfig(cfg)
+    input := &ec2.RunInstancesInput{
+        ImageId:      aws.String(amiID), // Now it's dynamic!
+        InstanceType: types.InstanceType(req.InstanceType),
+        MinCount:     aws.Int32(req.Count),
+        MaxCount:     aws.Int32(req.Count),
+    }
+    
+    result, err := client.RunInstances(ctx, input)
+    if err != nil {
+        return err
+    }
+    
+    fmt.Printf("Success! Instance ID: %s launched with AMI: %s\n", *result.Instances[0].InstanceId, amiID)
+    return nil
 }
 
 func callAI(ctx context.Context, cfg aws.Config) ([]byte, error) {
