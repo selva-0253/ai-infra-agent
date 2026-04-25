@@ -32,24 +32,34 @@ type InfraRequest struct {
 
 // --- The Core Logic (Reusable) ---
 func runInfrastructureAgent(ctx context.Context, cfg aws.Config) error {
-	aiOutput := callAI(ctx, cfg)
+    // 1. Capture the error from callAI
+    aiOutput, err := callAI(ctx, cfg)
+    if err != nil {
+        return fmt.Errorf("AI call failed: %w", err)
+    }
 
-	var anthropic AnthropicResponse
-	if err := json.Unmarshal(aiOutput, &anthropic); err != nil {
-		return err
-	}
-	rawText := anthropic.Content[0].Text
-	cleanJSON := strings.TrimSpace(strings.ReplaceAll(strings.ReplaceAll(rawText, "```json", ""), "```", ""))
+    var anthropic AnthropicResponse
+    if err := json.Unmarshal(aiOutput, &anthropic); err != nil {
+        return err
+    }
 
-	var request InfraRequest
-	if err := json.Unmarshal([]byte(cleanJSON), &request); err != nil {
-		return err
-	}
+    // 2. Add safety check: Ensure content exists
+    if len(anthropic.Content) == 0 {
+        return fmt.Errorf("AI response content is empty")
+    }
 
-	if request.Action == "create_ec2" {
-		return createEC2(ctx, cfg, request)
-	}
-	return nil
+    rawText := anthropic.Content[0].Text
+    cleanJSON := strings.TrimSpace(strings.ReplaceAll(strings.ReplaceAll(rawText, "```json", ""), "```", ""))
+
+    var request InfraRequest
+    if err := json.Unmarshal([]byte(cleanJSON), &request); err != nil {
+        return err
+    }
+
+    if request.Action == "create_ec2" {
+        return createEC2(ctx, cfg, request)
+    }
+    return nil
 }
 
 // --- Lambda Handler ---
@@ -103,19 +113,30 @@ func createEC2(ctx context.Context, cfg aws.Config, req InfraRequest) error {
 	return nil
 }
 
-func callAI(ctx context.Context, cfg aws.Config) []byte {
-	client := bedrockruntime.NewFromConfig(cfg)
-	input := map[string]interface{}{
-		"anthropic_version": "bedrock-2023-05-31",
-		"max_tokens":        200,
-		"system":            "Return ONLY JSON format: {\"action\": \"create_ec2\", \"instance_type\": \"t2.micro\", \"count\": 1}",
-		"messages": []map[string]string{{"role": "user", "content": "I need to launch an ec2 instance"}},
-	}
-	body, _ := json.Marshal(input)
-	output, _ := client.InvokeModel(ctx, &bedrockruntime.InvokeModelInput{
-		ModelId:     aws.String("anthropic.claude-sonnet-4-6"),
-		ContentType: aws.String("application/json"),
-		Body:        body,
-	})
-	return output.Body
+func callAI(ctx context.Context, cfg aws.Config) ([]byte, error) {
+    client := bedrockruntime.NewFromConfig(cfg)
+    input := map[string]interface{}{
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens":        200,
+        "system":            "Return ONLY JSON format: {\"action\": \"create_ec2\", \"instance_type\": \"t2.micro\", \"count\": 1}",
+        "messages":          []map[string]string{{"role": "user", "content": "I need to launch an ec2 instance"}},
+    }
+    body, err := json.Marshal(input)
+    if err != nil {
+        return nil, err
+    }
+
+    // IMPORTANT: Use a verified Model ID for your region. 
+    // Example: "anthropic.claude-3-sonnet-20240229-v1:0"
+    // Run 'aws bedrock list-foundation-models' in your terminal to see what is available.
+    output, err := client.InvokeModel(ctx, &bedrockruntime.InvokeModelInput{
+        ModelId:     aws.String("anthropic.claude-3-sonnet-20240229-v1:0"), 
+        ContentType: aws.String("application/json"),
+        Body:        body,
+    })
+
+    if err != nil {
+        return nil, err // Returns the error instead of panicking
+    }
+    return output.Body, nil
 }
