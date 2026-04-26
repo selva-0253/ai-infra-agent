@@ -1,0 +1,16 @@
+.git
+.gitignore
+.env
+.env.local
+*.swp
+*.swo
+*~
+.DS_Store
+node_modules
+*.md
+.vscode
+.idea
+bin/
+dist/
+*.log
+sa-key.json

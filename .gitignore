@@ -1,0 +1,102 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.so.*
+*.dylib
+agent
+agent.exe
+
+# Build output
+bin/
+dist/
+build/
+out/
+
+# Go build cache
+.cache/
+*.a
+
+# Go test cache
+.testcache/
+
+# Dependency directories
+vendor/
+
+# Environment files (NEVER commit credentials)
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+
+# GCP Service Account credentials (CRITICAL - NEVER COMMIT)
+sa-key.json
+*-sa-key.json
+service-account*.json
+google-*.json
+
+# AWS credentials (if keeping AWS legacy code)
+.aws/
+aws-credentials.json
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+*.iml
+
+# Logs
+*.log
+*.logs
+log/
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Local development
+local/
+tmp/
+temp/
+
+# IDE debug files
+debug.log
+*.prof
+*.pprof
+
+# Go mod cache
+go.sum.local
+
+# Testing
+coverage.txt
+*.out
+
+# Git
+.git/
+
+# Keep these IN version control
+!.gitkeep
